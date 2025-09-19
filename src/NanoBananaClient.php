@@ -619,6 +619,78 @@ class NanoBananaClient
 
 
     /**
+     * プロンプトファイルを使用して画像を編集する
+     *
+     * @param string $prompt_file_path プロンプトファイルのパス（./Prompt/からの相対パス）
+     * @param string $image_path 編集する画像のパス
+     * @param string $output_path 出力ファイルパス
+     * @return bool 成功した場合true
+     * @throws ApiKeyException
+     * @throws ApiRequestException
+     * @throws ImageProcessingException
+     * @throws FileOperationException
+     */
+    public function editImageWithPromptFile(string $prompt_file_path, string $image_path, string $output_path): bool
+    {
+        try {
+            // プロンプトファイルの完全パスを構築
+            $full_prompt_path = __DIR__ . '/Prompt/' . ltrim($prompt_file_path, './');
+            
+            // プロンプトファイルの存在確認
+            if (!file_exists($full_prompt_path)) {
+                throw new FileOperationException(
+                    'プロンプトファイルが見つかりません: ' . $full_prompt_path,
+                    0,
+                    null,
+                    ['prompt_file_path' => $full_prompt_path]
+                );
+            }
+
+            // プロンプトファイルの読み込み
+            $prompt = file_get_contents($full_prompt_path);
+            if ($prompt === false) {
+                throw new FileOperationException(
+                    'プロンプトファイルの読み込みに失敗しました: ' . $full_prompt_path,
+                    0,
+                    null,
+                    ['prompt_file_path' => $full_prompt_path]
+                );
+            }
+
+            // プロンプトが空でないことを確認
+            $prompt = trim($prompt);
+            if (empty($prompt)) {
+                throw new FileOperationException(
+                    'プロンプトファイルが空です: ' . $full_prompt_path,
+                    0,
+                    null,
+                    ['prompt_file_path' => $full_prompt_path]
+                );
+            }
+
+            // editImageメソッドを呼び出し
+            return $this->editImage($prompt, $image_path, $output_path);
+
+        } catch (ApiKeyException | ApiRequestException | ImageProcessingException | FileOperationException $e) {
+            // カスタム例外はそのまま再スロー
+            throw $e;
+        } catch (\Exception $e) {
+            // その他の例外はFileOperationExceptionとしてラップ
+            throw new FileOperationException(
+                '予期しないエラーが発生しました: ' . $e->getMessage(),
+                $e->getCode(),
+                $e,
+                [
+                    'prompt_file_path' => $prompt_file_path,
+                    'image_path' => $image_path,
+                    'output_path' => $output_path,
+                    'original_error' => $e->getMessage()
+                ]
+            );
+        }
+    }
+
+    /**
      * イラストプロンプトを構築する
      *
      * @param string $subject 被写体
