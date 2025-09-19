@@ -1,6 +1,6 @@
 <?php
 
-namespace YouCast\NanoBanana\Builders;
+namespace YouCast\Gemini\NanoBanana\Builders;
 
 /**
  * ステッカー生成のためのプロンプトビルダークラス

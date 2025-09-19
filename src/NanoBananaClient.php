@@ -1,13 +1,13 @@
 <?php
 
-namespace YouCast\NanoBanana;
+namespace YouCast\Gemini\NanoBanana;
 
-use YouCast\NanoBanana\Exceptions\ApiKeyException;
-use YouCast\NanoBanana\Exceptions\ApiRequestException;
-use YouCast\NanoBanana\Exceptions\ImageProcessingException;
-use YouCast\NanoBanana\Exceptions\FileOperationException;
-use YouCast\NanoBanana\Builders\PhotographyPromptBuilder;
-use YouCast\NanoBanana\Builders\StickerPromptBuilder;
+use YouCast\Gemini\NanoBanana\Exceptions\ApiKeyException;
+use YouCast\Gemini\NanoBanana\Exceptions\ApiRequestException;
+use YouCast\Gemini\NanoBanana\Exceptions\ImageProcessingException;
+use YouCast\Gemini\NanoBanana\Exceptions\FileOperationException;
+use YouCast\Gemini\NanoBanana\Builders\PhotographyPromptBuilder;
+use YouCast\Gemini\NanoBanana\Builders\StickerPromptBuilder;
 use Illuminate\Support\Facades\Http;
 
 /**

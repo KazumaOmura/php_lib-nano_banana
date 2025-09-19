@@ -1,6 +1,6 @@
 <?php
 
-namespace YouCast\NanoBanana\Exceptions;
+namespace YouCast\Gemini\NanoBanana\Exceptions;
 
 /**
  * 画像処理関連の例外クラス

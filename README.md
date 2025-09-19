@@ -22,8 +22,8 @@ composer require KazumaOmura/php_lib-nano_banana
 ### 基本的な使用方法
 
 ```php
-use YouCast\NanoBanana\NanoBananaClient;
-use YouCast\NanoBanana\Exceptions\NanoBananaException;
+use YouCast\Gemini\NanoBanana\NanoBananaClient;
+use YouCast\Gemini\NanoBanana\Exceptions\NanoBananaException;
 
 try {
     $client = new NanoBananaClient('your-api-key');
@@ -37,7 +37,7 @@ try {
 ### カスタムプロンプトでの画像生成
 
 ```php
-use YouCast\NanoBanana\NanoBananaClient;
+use YouCast\Gemini\NanoBanana\NanoBananaClient;
 
 $client = new NanoBananaClient();
 $client->generateImage('Create a beautiful sunset landscape', 'sunset.png');
