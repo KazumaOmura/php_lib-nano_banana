@@ -1,6 +1,6 @@
 <?php
 
-namespace YouCast\Gemini\NanoBanana\Exceptions;
+namespace YouCast\NanoBanana\Exceptions;
 
 use Exception;
 

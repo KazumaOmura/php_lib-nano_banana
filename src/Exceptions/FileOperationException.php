@@ -1,6 +1,6 @@
 <?php
 
-namespace YouCast\Gemini\NanoBanana\Exceptions;
+namespace YouCast\NanoBanana\Exceptions;
 
 /**
  * ファイル操作関連の例外クラス

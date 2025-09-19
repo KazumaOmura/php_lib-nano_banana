@@ -1,5 +1,5 @@
 {
-    "name": "youcast/gemini/nano-banana-client",
+    "name": "youcast/nano-banana-client",
     "description": "Google Gemini APIを使用して画像を生成するPHPライブラリ",
     "type": "library",
     "license": "MIT",
@@ -21,12 +21,12 @@
     },
     "autoload": {
         "psr-4": {
-            "YouCast\\Gemini\\NanoBanana\\": "src/"
+            "YouCast\\NanoBanana\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "YouCast\\Gemini\\NanoBanana\\Tests\\": "tests/"
+            "YouCast\\NanoBanana\\Tests\\": "tests/"
         }
     },
     "scripts": {
