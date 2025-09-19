@@ -11,8 +11,10 @@ Google Gemini APIを使用して画像を生成するPHPライブラリです。
 
 ## インストール
 
+### Composerを使用したインストール
+
 ```bash
-composer require youcast/nano-banana-client
+composer require KazumaOmura/php_lib-nano_banana
 ```
 
 ## 使用方法
@@ -50,37 +52,6 @@ export GEMINI_API_KEY=your-api-key-here
 ```php
 $client = new NanoBananaClient(); // 環境変数から自動取得
 ```
-
-## Artisanコマンド
-
-このライブラリはLaravelのArtisanコマンドも提供します。
-
-### 基本的な使用方法
-
-```bash
-# デフォルトプロンプトで画像生成
-php artisan nano-banana:generate
-
-# カスタムプロンプトで画像生成
-php artisan nano-banana:generate "Create a beautiful sunset landscape"
-
-# 特定のファイル名で保存
-php artisan nano-banana:generate --filename="my-image.png"
-
-# 特定のパスに保存
-php artisan nano-banana:generate --output="/path/to/output.png"
-
-# APIキーを指定
-php artisan nano-banana:generate --api-key="your-api-key"
-```
-
-### コマンドオプション
-
-- `prompt`: 画像生成のプロンプト（省略時はデフォルトプロンプトを使用）
-- `--output`: 出力ファイルパス（省略時はstorage/app/public/に保存）
-- `--filename`: 出力ファイル名（--outputと併用不可）
-- `--api-key`: APIキー（省略時は環境変数から取得）
-- `--verbose`: 詳細なエラー情報を表示
 
 ## 例外処理
 
