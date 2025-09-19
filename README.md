@@ -11,10 +11,28 @@ Google Gemini APIを使用して画像を生成するPHPライブラリです。
 
 ## インストール
 
-### Composerを使用したインストール
+### VCSリポジトリを使用したインストール
+
+composer.jsonファイルに以下の設定を追加してください：
+
+```json
+{
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/KazumaOmura/php_lib-nano_banana"
+        }
+    ],
+    "require": {
+        "youcast/nano-banana-client": "^1.0"
+    }
+}
+```
+
+その後、以下のコマンドを実行してください：
 
 ```bash
-composer require KazumaOmura/php_lib-nano_banana
+composer install
 ```
 
 ## 使用方法
