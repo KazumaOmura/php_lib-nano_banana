@@ -2,6 +2,7 @@
 
 namespace YouCast\NanoBanana;
 
+use YouCast\NanoBanana\Enums\Model;
 use YouCast\NanoBanana\Exceptions\ApiKeyException;
 use YouCast\NanoBanana\Exceptions\ApiRequestException;
 use YouCast\NanoBanana\Exceptions\ImageProcessingException;
@@ -15,12 +16,12 @@ use Illuminate\Support\Facades\Http;
  */
 class NanoBananaClient
 {
-    private string $api_key;
-    private string $base_url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent';
-    
-    public function __construct(string $api_key)
+    public function __construct(
+        private string $api_key, 
+        private Model $model,
+        private bool $is_image_validation = true
+    )
     {
-        $this->api_key = $api_key;
     }
 
     /**
@@ -52,7 +53,8 @@ class NanoBananaClient
             $response = Http::withHeaders([
                 'x-goog-api-key' => $this->api_key,
                 'Content-Type' => 'application/json'
-            ])->post($this->base_url, $request_data);
+            ])->timeout(120) // タイムアウトを120秒に設定
+              ->post($this->model->getApiUrl(), $request_data);
 
             if (!$response->successful()) {
                 throw new ApiRequestException(
@@ -71,7 +73,7 @@ class NanoBananaClient
 
             // レスポンスからBase64データを抽出
             $base64_data = $this->extractBase64Data($response_data);
-            
+
             if (empty($base64_data)) {
                 throw new ImageProcessingException(
                     'レスポンスからBase64データを抽出できませんでした',
@@ -130,7 +132,6 @@ class NanoBananaClient
             }
 
             return true;
-
         } catch (ApiKeyException | ApiRequestException | ImageProcessingException | FileOperationException $e) {
             // カスタム例外はそのまま再スロー
             throw $e;
@@ -204,12 +205,15 @@ class NanoBananaClient
             // 画像のMIMEタイプを取得
             $mime_type = $this->getMimeType($image_path);
             if (empty($mime_type)) {
-                throw new ImageProcessingException(
-                    'サポートされていない画像形式です: ' . $image_path,
-                    0,
-                    null,
-                    ['image_path' => $image_path]
-                );
+                if ($this->is_image_validation) {
+                    throw new ImageProcessingException(
+                        'サポートされていない画像形式です: ' . $image_path,
+                        0,
+                        null,
+                        ['image_path' => $image_path]
+                    );
+                }
+                return false;
             }
 
             // 画像をBase64エンコード
@@ -236,7 +240,7 @@ class NanoBananaClient
             $response = Http::withHeaders([
                 'x-goog-api-key' => $this->api_key,
                 'Content-Type' => 'application/json'
-            ])->post($this->base_url, $request_data);
+            ])->post($this->model->getApiUrl(), $request_data);
 
             if (!$response->successful()) {
                 throw new ApiRequestException(
@@ -256,7 +260,7 @@ class NanoBananaClient
 
             // レスポンスからBase64データを抽出
             $base64_data = $this->extractBase64Data($response_data);
-            
+
             if (empty($base64_data)) {
                 throw new ImageProcessingException(
                     'レスポンスからBase64データを抽出できませんでした',
@@ -319,7 +323,6 @@ class NanoBananaClient
             }
 
             return true;
-
         } catch (ApiKeyException | ApiRequestException | ImageProcessingException | FileOperationException $e) {
             // カスタム例外はそのまま再スロー
             throw $e;
@@ -613,7 +616,7 @@ class NanoBananaClient
 
         // イラストプロンプトを構築
         $prompt = $this->buildIllustrationPrompt($subject, $params);
-        
+
         return $this->generateImage($prompt, $output_path);
     }
 
@@ -635,7 +638,7 @@ class NanoBananaClient
         try {
             // プロンプトファイルの完全パスを構築
             $full_prompt_path = __DIR__ . '/Prompt/' . ltrim($prompt_file_path, './');
-            
+
             // プロンプトファイルの存在確認
             if (!file_exists($full_prompt_path)) {
                 throw new FileOperationException(
@@ -670,7 +673,6 @@ class NanoBananaClient
 
             // editImageメソッドを呼び出し
             return $this->editImage($prompt, $image_path, $output_path);
-
         } catch (ApiKeyException | ApiRequestException | ImageProcessingException | FileOperationException $e) {
             // カスタム例外はそのまま再スロー
             throw $e;
@@ -706,7 +708,7 @@ class NanoBananaClient
         $composition = $params['composition'] ?? 'balanced';
 
         $prompt = "A {$quality} quality {$style}-style illustration of {$subject}. ";
-        
+
         // スタイルの詳細を追加
         if ($style === 'anime') {
             $prompt .= "The illustration features anime/manga art style with detailed character design. ";
@@ -720,7 +722,7 @@ class NanoBananaClient
 
         // ムードの指定
         $prompt .= "The overall mood should be {$mood}. ";
-        
+
         // 背景の指定
         if ($background === 'transparent') {
             $prompt .= "The background must be transparent. ";
@@ -732,7 +734,7 @@ class NanoBananaClient
 
         // 構図の指定
         $prompt .= "Use a {$composition} composition with good visual balance. ";
-        
+
         // 品質の指定
         if ($quality === 'high') {
             $prompt .= "The illustration should be highly detailed with professional quality rendering. ";
