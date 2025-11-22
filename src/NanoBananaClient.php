@@ -3,6 +3,7 @@
 namespace YouCast\NanoBanana;
 
 use YouCast\NanoBanana\Enums\Model;
+use YouCast\NanoBanana\Dto\NanoBananaResponseDto;
 use YouCast\NanoBanana\Exceptions\ApiKeyException;
 use YouCast\NanoBanana\Exceptions\ApiRequestException;
 use YouCast\NanoBanana\Exceptions\ImageProcessingException;
@@ -29,13 +30,13 @@ class NanoBananaClient
      *
      * @param string $prompt 画像生成のプロンプト
      * @param string $output_path 出力ファイルパス
-     * @return bool 成功した場合true
+     * @return NanoBananaResponseDto
      * @throws ApiKeyException
      * @throws ApiRequestException
      * @throws ImageProcessingException
      * @throws FileOperationException
      */
-    public function generateImage(string $prompt, string $output_path): bool
+    public function generateImage(string $prompt, string $output_path): NanoBananaResponseDto
     {
         try {
             // APIリクエストの準備
@@ -69,32 +70,29 @@ class NanoBananaClient
                 );
             }
 
-            $response_data = $response->json();
+            $dto = new NanoBananaResponseDto($response->json());
 
-            // レスポンスからBase64データを抽出
-            $base64_data = $this->extractBase64Data($response_data);
-
-            if (empty($base64_data)) {
+            if (empty($dto->getBase64())) {
                 throw new ImageProcessingException(
                     'レスポンスからBase64データを抽出できませんでした',
                     0,
                     null,
                     [
-                        'response_data' => $response_data,
+                        'response' => $dto,
                         'prompt' => $prompt
                     ]
                 );
             }
 
             // Base64デコードしてファイルに保存
-            $image_data = base64_decode($base64_data);
+            $image_data = base64_decode($dto->getBase64());
             if ($image_data === false) {
                 throw new ImageProcessingException(
                     'Base64デコードに失敗しました',
                     0,
                     null,
                     [
-                        'base64_data_length' => strlen($base64_data),
+                        'base64_data_length' => strlen($dto->getBase64()),
                         'prompt' => $prompt
                     ]
                 );
@@ -131,7 +129,7 @@ class NanoBananaClient
                 );
             }
 
-            return true;
+            return $dto;
         } catch (ApiKeyException | ApiRequestException | ImageProcessingException | FileOperationException $e) {
             // カスタム例外はそのまま再スロー
             throw $e;
@@ -154,13 +152,13 @@ class NanoBananaClient
      * デフォルトのナノバナナ画像を生成する
      *
      * @param string $output_path 出力ファイルパス
-     * @return bool 成功した場合true
+     * @return NanoBananaResponseDto 成功した場合true
      * @throws ApiKeyException
      * @throws ApiRequestException
      * @throws ImageProcessingException
      * @throws FileOperationException
      */
-    public function generateNanoBananaImage(string $output_path): bool
+    public function generateNanoBananaImage(string $output_path): NanoBananaResponseDto
     {
         $prompt = 'Create a picture of a nano banana dish in a fancy restaurant with a Gemini theme';
         return $this->generateImage($prompt, $output_path);
@@ -372,25 +370,21 @@ class NanoBananaClient
      * @param array $response_data APIレスポンスデータ
      * @return string|null Base64データ
      */
-    private function extractBase64Data(array $response_data): ?string
+    private function extractBase64Data(array $response_data): array
     {
-        // レスポンス構造に応じてBase64データを抽出
-        if (isset($response_data['candidates'][0]['content']['parts'][0]['data'])) {
-            return $response_data['candidates'][0]['content']['parts'][0]['data'];
-        }
+        // if (isset($response_data['candidates'][0]['content']['parts'][0]['data'])) {
+        //     return $response_data['candidates'][0]['content']['parts'][0]['data'];;
+        // }
 
-        // 別の構造の場合の対応
-        if (isset($response_data['candidates'][0]['content']['parts'][0]['inlineData']['data'])) {
-            return $response_data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
-        }
+        // if (isset($response_data['candidates'][0]['content']['parts'][0]['inlineData']['data'])) {
+        //     return $response_data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
+        // }
 
-        // 正規表現で"data": "..."の形式を検索
-        $response_json = json_encode($response_data);
-        if (preg_match('/"data":\s*"([^"]+)"/', $response_json, $matches)) {
-            return $matches[1];
-        }
+        return [
+            'row' => $response_data,
+            'base64_data' => '',
 
-        return null;
+        ];
     }
 
     /**
@@ -419,13 +413,13 @@ class NanoBananaClient
      * @param string $subject 被写体
      * @param string $output_path 出力ファイルパス
      * @param array $photography_params 写真用語のパラメータ
-     * @return bool 成功した場合true
+     * @return NanoBananaResponseDto 成功した場合true
      * @throws ApiKeyException
      * @throws ApiRequestException
      * @throws ImageProcessingException
      * @throws FileOperationException
      */
-    public function generatePhotorealisticImage(string $subject, string $output_path, array $photography_params = []): bool
+    public function generatePhotorealisticImage(string $subject, string $output_path, array $photography_params = []): NanoBananaResponseDto
     {
         $builder = new PhotographyPromptBuilder();
         $builder->setSubject($subject);
@@ -472,13 +466,13 @@ class NanoBananaClient
      * @param string $output_path 出力ファイルパス
      * @param string $preset プリセット名 (portrait, landscape, macro, street, studio)
      * @param array $additional_params 追加のパラメータ
-     * @return bool 成功した場合true
+     * @return NanoBananaResponseDto 成功した場合true
      * @throws ApiKeyException
      * @throws ApiRequestException
      * @throws ImageProcessingException
      * @throws FileOperationException
      */
-    public function generatePhotorealisticImageWithPreset(string $subject, string $output_path, string $preset, array $additional_params = []): bool
+    public function generatePhotorealisticImageWithPreset(string $subject, string $output_path, string $preset, array $additional_params = []): NanoBananaResponseDto
     {
         $params = array_merge(['preset' => $preset], $additional_params);
         return $this->generatePhotorealisticImage($subject, $output_path, $params);
@@ -543,13 +537,13 @@ class NanoBananaClient
      * @param string $subject ステッカーの被写体
      * @param string $output_path 出力ファイルパス
      * @param array $sticker_params ステッカーのパラメータ
-     * @return bool 成功した場合true
+     * @return NanoBananaResponseDto 成功した場合true
      * @throws ApiKeyException
      * @throws ApiRequestException
      * @throws ImageProcessingException
      * @throws FileOperationException
      */
-    public function generateSticker(string $subject, string $output_path, array $sticker_params = []): bool
+    public function generateSticker(string $subject, string $output_path, array $sticker_params = []): NanoBananaResponseDto
     {
         $builder = new StickerPromptBuilder();
         $builder->setSubject($subject);
@@ -595,13 +589,13 @@ class NanoBananaClient
      * @param string $subject イラストの被写体
      * @param string $output_path 出力ファイルパス
      * @param array $illustration_params イラストのパラメータ
-     * @return bool 成功した場合true
+     * @return NanoBananaResponseDto 成功した場合true
      * @throws ApiKeyException
      * @throws ApiRequestException
      * @throws ImageProcessingException
      * @throws FileOperationException
      */
-    public function generateIllustration(string $subject, string $output_path, array $illustration_params = []): bool
+    public function generateIllustration(string $subject, string $output_path, array $illustration_params = []): NanoBananaResponseDto
     {
         // デフォルトのイラストパラメータ
         $default_params = [
@@ -619,7 +613,6 @@ class NanoBananaClient
 
         return $this->generateImage($prompt, $output_path);
     }
-
 
     /**
      * プロンプトファイルを使用して画像を編集する
