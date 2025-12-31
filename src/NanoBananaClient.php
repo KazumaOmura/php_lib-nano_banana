@@ -17,13 +17,14 @@ use Illuminate\Support\Facades\Http;
  */
 class NanoBananaClient
 {
+
+    private array $request_data = [];
+
     public function __construct(
-        private string $api_key, 
+        private string $api_key,
         private Model $model,
         private bool $is_image_validation = true
-    )
-    {
-    }
+    ) {}
 
     /**
      * Gemini APIを使用して画像を生成し、Base64デコードしてファイルに保存する
@@ -50,12 +51,15 @@ class NanoBananaClient
                 ]
             ];
 
+            // リクエストデータを保存
+            $this->request_data = $request_data;
+
             // APIリクエストの実行
             $response = Http::withHeaders([
                 'x-goog-api-key' => $this->api_key,
                 'Content-Type' => 'application/json'
             ])->timeout(120) // タイムアウトを120秒に設定
-              ->post($this->model->getApiUrl(), $request_data);
+                ->post($this->model->getApiUrl(), $request_data);
 
             if (!$response->successful()) {
                 throw new ApiRequestException(
@@ -168,54 +172,64 @@ class NanoBananaClient
      * 画像を編集する（テキストと画像による画像変換）
      *
      * @param string $prompt 画像編集のプロンプト
-     * @param string $image_path 編集する画像のパス
+     * @param array $input_image_paths 編集する画像のパス
      * @param string $output_path 出力ファイルパス
-     * @return bool 成功した場合true
+     * @return NanoBananaResponseDto 成功した場合true
      * @throws ApiKeyException
      * @throws ApiRequestException
      * @throws ImageProcessingException
      * @throws FileOperationException
      */
-    public function editImage(string $prompt, string $image_path, string $output_path): bool
+    public function editImage(string $prompt, array $input_image_paths, string $output_path): NanoBananaResponseDto
     {
         try {
-            // 画像ファイルの存在確認
-            if (!file_exists($image_path)) {
-                throw new FileOperationException(
-                    '画像ファイルが見つかりません: ' . $image_path,
-                    0,
-                    null,
-                    ['image_path' => $image_path]
-                );
+            $image_data_list = [];
+            // URLかローカルファイルパスかを判断
+            foreach ($input_image_paths as $image_path) {
+                if (filter_var($image_path, FILTER_VALIDATE_URL)) {
+                    $image_data_list[] = [
+                        'url' => $image_path,
+                        'data' => file_get_contents($image_path),
+                    ];
+                } else {
+                    $image_data_list[] = [
+                        'url' => null,
+                        'data' => file_get_contents($image_path),
+                    ];
+                }
             }
 
-            // 画像ファイルの読み込み
-            $image_data = file_get_contents($image_path);
-            if ($image_data === false) {
-                throw new FileOperationException(
-                    '画像ファイルの読み込みに失敗しました: ' . $image_path,
-                    0,
-                    null,
-                    ['image_path' => $image_path]
-                );
-            }
-
-            // 画像のMIMEタイプを取得
-            $mime_type = $this->getMimeType($image_path);
-            if (empty($mime_type)) {
-                if ($this->is_image_validation) {
-                    throw new ImageProcessingException(
-                        'サポートされていない画像形式です: ' . $image_path,
+            // 画像ファイルの存在チェックとmimeタイプの取得
+            $inline_data_list = [];
+            foreach ($image_data_list as $image_data_item) {
+                if ($image_data_item['data'] === false) {
+                    throw new FileOperationException(
+                        '画像ファイルの読み込みに失敗しました: ' . $image_data_item['url'],
                         0,
                         null,
-                        ['image_path' => $image_path]
+                        ['image_path' => $image_data_item['url']]
                     );
                 }
-                return false;
-            }
 
-            // 画像をBase64エンコード
-            $base64_image = base64_encode($image_data);
+                $mime_type = $this->getMimeType($image_data_item['url']);
+                if (empty($mime_type)) {
+                    if ($this->is_image_validation) {
+                        throw new ImageProcessingException(
+                            'サポートされていない画像形式です: ' . $image_data_item['url'],
+                            0,
+                            null,
+                            ['image_path' => $image_data_item['url']]
+                        );
+                    }
+                }
+
+                $inline_data_list[] = [
+                    'inline_data' => [
+                        'mime_type' => $mime_type,
+                        'data' => base64_encode($image_data_item['data'])
+                    ]
+                ];
+            }
 
             // APIリクエストの準備
             $request_data = [
@@ -223,16 +237,14 @@ class NanoBananaClient
                     [
                         'parts' => [
                             ['text' => $prompt],
-                            [
-                                'inline_data' => [
-                                    'mime_type' => $mime_type,
-                                    'data' => $base64_image
-                                ]
-                            ]
+                            $inline_data_list
                         ]
                     ]
                 ]
             ];
+
+            // リクエストデータを保存
+            $this->request_data = $request_data;
 
             // APIリクエストの実行
             $response = Http::withHeaders([
@@ -254,35 +266,20 @@ class NanoBananaClient
                 );
             }
 
-            $response_data = $response->json();
+            // $response_data = $response->json();
+            $dto = new NanoBananaResponseDto($response->json());
 
-            // レスポンスからBase64データを抽出
-            $base64_data = $this->extractBase64Data($response_data);
-
-            if (empty($base64_data)) {
-                throw new ImageProcessingException(
-                    'レスポンスからBase64データを抽出できませんでした',
-                    0,
-                    null,
-                    [
-                        'response_data' => $response_data,
-                        'prompt' => $prompt,
-                        'image_path' => $image_path
-                    ]
-                );
-            }
 
             // Base64デコードしてファイルに保存
-            $edited_image_data = base64_decode($base64_data);
-            if ($edited_image_data === false) {
+            $image_data = base64_decode($dto->getBase64());
+            if ($image_data === false) {
                 throw new ImageProcessingException(
                     'Base64デコードに失敗しました',
                     0,
                     null,
                     [
-                        'base64_data_length' => strlen($base64_data),
-                        'prompt' => $prompt,
-                        'image_path' => $image_path
+                        'base64_data_length' => strlen($dto->getBase64()),
+                        'prompt' => $prompt
                     ]
                 );
             }
@@ -297,15 +294,14 @@ class NanoBananaClient
                         null,
                         [
                             'output_dir' => $output_dir,
-                            'prompt' => $prompt,
-                            'image_path' => $image_path
+                            'prompt' => $prompt
                         ]
                     );
                 }
             }
 
             // ファイルに保存
-            $result = file_put_contents($output_path, $edited_image_data);
+            $result = file_put_contents($output_path, $image_data);
             if ($result === false) {
                 throw new FileOperationException(
                     'ファイルの保存に失敗しました: ' . $output_path,
@@ -313,14 +309,13 @@ class NanoBananaClient
                     null,
                     [
                         'output_path' => $output_path,
-                        'image_data_size' => strlen($edited_image_data),
-                        'prompt' => $prompt,
-                        'image_path' => $image_path
+                        'image_data_size' => strlen($image_data),
+                        'prompt' => $prompt
                     ]
                 );
             }
 
-            return true;
+            return $dto;
         } catch (ApiKeyException | ApiRequestException | ImageProcessingException | FileOperationException $e) {
             // カスタム例外はそのまま再スロー
             throw $e;
@@ -332,7 +327,7 @@ class NanoBananaClient
                 $e,
                 [
                     'prompt' => $prompt,
-                    'image_path' => $image_path,
+                    'image_path' => $image_data_item['url'],
                     'output_path' => $output_path,
                     'original_error' => $e->getMessage()
                 ]
@@ -347,55 +342,31 @@ class NanoBananaClient
      * @return string|null MIMEタイプ
      */
     private function getMimeType(string $image_path): ?string
-    {
+{
+    // URLの場合
+    if (filter_var($image_path, FILTER_VALIDATE_URL)) {
+        $content = file_get_contents($image_path);
+        if ($content === false) {
+            return null;
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime_type = finfo_buffer($finfo, $content);
+        finfo_close($finfo);
+    } else {
+        // ローカルファイルの場合
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mime_type = finfo_file($finfo, $image_path);
         finfo_close($finfo);
-
-        // サポートされているMIMEタイプ
-        $supported_types = [
-            'image/jpeg' => 'image/jpeg',
-            'image/jpg' => 'image/jpeg',
-            'image/png' => 'image/png',
-            'image/gif' => 'image/gif',
-            'image/webp' => 'image/webp'
-        ];
-
-        return $supported_types[$mime_type] ?? null;
     }
 
-    /**
-     * レスポンスからBase64データを抽出する
-     *
-     * @param array $response_data APIレスポンスデータ
-     * @return string|null Base64データ
-     */
-    private function extractBase64Data(array $response_data): array
-    {
-        // if (isset($response_data['candidates'][0]['content']['parts'][0]['data'])) {
-        //     return $response_data['candidates'][0]['content']['parts'][0]['data'];;
-        // }
-
-        // if (isset($response_data['candidates'][0]['content']['parts'][0]['inlineData']['data'])) {
-        //     return $response_data['candidates'][0]['content']['parts'][0]['inlineData']['data'];
-        // }
-
-        return [
-            'row' => $response_data,
-            'base64_data' => '',
-
-        ];
-    }
-
-    /**
-     * APIキーを設定する
-     *
-     * @param string $api_key
-     */
-    public function setApiKey(string $api_key): void
-    {
-        $this->api_key = $api_key;
-    }
+    return match ($mime_type) {
+        'image/jpeg', 'image/jpg' => 'image/jpeg',
+        'image/png'  => 'image/png',
+        'image/gif'  => 'image/gif',
+        'image/webp' => 'image/webp',
+        default      => null,
+    };
+}
 
     /**
      * 現在のAPIキーを取得する（マスク済み）
@@ -528,7 +499,8 @@ class NanoBananaClient
         }
 
         $prompt = $builder->build();
-        return $this->editImage($prompt, $image_path, $output_path);
+
+        return $this->editImage($prompt, $image_path, $output_path)->getBase64();
     }
 
     /**
@@ -665,7 +637,7 @@ class NanoBananaClient
             }
 
             // editImageメソッドを呼び出し
-            return $this->editImage($prompt, $image_path, $output_path);
+            return $this->editImage($prompt, $image_path, $output_path)->getBase64();
         } catch (ApiKeyException | ApiRequestException | ImageProcessingException | FileOperationException $e) {
             // カスタム例外はそのまま再スロー
             throw $e;
@@ -736,5 +708,10 @@ class NanoBananaClient
         $prompt .= "This should be suitable for use as a digital illustration, artwork, or visual asset.";
 
         return $prompt;
+    }
+
+    public function getRequestData(): array
+    {
+        return $this->request_data;
     }
 }
