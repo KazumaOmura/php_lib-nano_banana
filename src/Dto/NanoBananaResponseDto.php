@@ -26,7 +26,7 @@ class NanoBananaResponseDto
         $this->prompt_token_count = $this->row_response['usageMetadata']['promptTokenCount'];
         $this->candidates_token_count = $this->row_response['usageMetadata']['candidatesTokenCount'];
         $this->total_token_count = $this->row_response['usageMetadata']['totalTokenCount'];
-        $this->thoughts_token_count = $this->row_response['usageMetadata']['thoughtsTokenCount'];
+        $this->thoughts_token_count = $this->row_response['usageMetadata']['thoughtsTokenCount'] ?? 0;
         $this->model_version = $this->row_response['modelVersion'];
         $this->response_id = $this->row_response['responseId'];
     }

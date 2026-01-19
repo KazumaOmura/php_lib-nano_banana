@@ -327,7 +327,6 @@ class NanoBananaClient
                 $e,
                 [
                     'prompt' => $prompt,
-                    'image_path' => $image_data_item['url'],
                     'output_path' => $output_path,
                     'original_error' => $e->getMessage()
                 ]

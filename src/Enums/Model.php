@@ -14,7 +14,7 @@ enum Model: string {
         };
 
         return match($this) {
-            self::GEMINI_2_5 => "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:{$suffix}",
+            self::GEMINI_2_5 => "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:{$suffix}",
             self::GEMINI_3 => "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:{$suffix}",
         };
     }
