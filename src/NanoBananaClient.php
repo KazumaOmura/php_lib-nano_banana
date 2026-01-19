@@ -2,7 +2,7 @@
 
 namespace YouCast\NanoBanana;
 
-use YouCast\NanoBanana\Enums\Model;
+use YouCast\NanoBanana\Enums\ImageModel;
 use YouCast\NanoBanana\Dto\NanoBananaResponseDto;
 use YouCast\NanoBanana\Exceptions\ApiKeyException;
 use YouCast\NanoBanana\Exceptions\ApiRequestException;
@@ -22,7 +22,7 @@ class NanoBananaClient
 
     public function __construct(
         private string $api_key,
-        private Model $model,
+        private ImageModel $model,
         private bool $is_image_validation = true
     ) {}
 

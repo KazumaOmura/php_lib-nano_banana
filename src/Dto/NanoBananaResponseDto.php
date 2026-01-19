@@ -15,12 +15,21 @@ class NanoBananaResponseDto
     public function __construct(
         private array $row_response
     ) {
-        // base64
+        // parts[0] に data がある場合
         if (isset($this->row_response['candidates'][0]['content']['parts'][0]['data'])) {
             $this->base64 = $this->row_response['candidates'][0]['content']['parts'][0]['data'];
         }
+        // parts[0] に inlineData がある場合
         if (isset($this->row_response['candidates'][0]['content']['parts'][0]['inlineData']['data'])) {
             $this->base64 = $this->row_response['candidates'][0]['content']['parts'][0]['inlineData']['data'];
+        }
+        // parts[1] に data がある場合
+        if (isset($this->row_response['candidates'][0]['content']['parts'][1]['data'])) {
+            $this->base64 = $this->row_response['candidates'][0]['content']['parts'][1]['data'];
+        }
+        // parts[1] に inlineData がある場合
+        if (isset($this->row_response['candidates'][0]['content']['parts'][1]['inlineData']['data'])) {
+            $this->base64 = $this->row_response['candidates'][0]['content']['parts'][1]['inlineData']['data'];
         }
 
         $this->prompt_token_count = $this->row_response['usageMetadata']['promptTokenCount'];
